@@ -1,0 +1,242 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  username  String   @unique
+  password  String
+  role      UserRole @default(VIEWER)
+  firstName String
+  lastName  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  eventsCreated   Event[]
+  formsCreated    Form[]
+  playersScouted  Player[]       @relation("ScoutedPlayers")
+  sponsorsScouted Sponsor[]      @relation("ScoutedSponsors")
+  formResponses   FormResponse[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN
+  ORGANIZER
+  SCOUT
+  VIEWER
+}
+
+model Event {
+  id          String      @id @default(uuid())
+  name        String
+  description String?
+  date        DateTime
+  location    String
+  status      EventStatus @default(DRAFT)
+  maxPlayers  Int?
+  createdBy   String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  creator        User            @relation(fields: [createdBy], references: [id])
+  rosters        Roster[]
+  eventSponsors  EventSponsor[]
+
+  @@map("events")
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model Player {
+  id         String       @id @default(uuid())
+  firstName  String
+  lastName   String
+  email      String?
+  phone      String?
+  nickname   String?
+  skillLevel SkillLevel   @default(BEGINNER)
+  status     PlayerStatus @default(SCOUTED)
+  notes      String?
+  scoutedBy  String?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  scout   User?    @relation("ScoutedPlayers", fields: [scoutedBy], references: [id])
+  rosters Roster[]
+
+  @@map("players")
+}
+
+enum SkillLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  PROFESSIONAL
+}
+
+enum PlayerStatus {
+  SCOUTED
+  ACTIVE
+  INACTIVE
+  RETIRED
+}
+
+model Roster {
+  id               String       @id @default(uuid())
+  eventId          String
+  playerId         String
+  position         String?
+  registrationDate DateTime     @default(now())
+  status           RosterStatus @default(REGISTERED)
+  notes            String?
+
+  event  Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, playerId])
+  @@map("rosters")
+}
+
+enum RosterStatus {
+  REGISTERED
+  CONFIRMED
+  WAITLISTED
+  CANCELLED
+  COMPETED
+}
+
+model Sponsor {
+  id                 String        @id @default(uuid())
+  name               String
+  contactName        String?
+  email              String?
+  phone              String?
+  website            String?
+  status             SponsorStatus @default(POTENTIAL)
+  type               SponsorType   @default(OTHER)
+  contributionLevel  String?
+  notes              String?
+  scoutedBy          String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  scout          User?           @relation("ScoutedSponsors", fields: [scoutedBy], references: [id])
+  eventSponsors  EventSponsor[]
+
+  @@map("sponsors")
+}
+
+enum SponsorStatus {
+  POTENTIAL
+  CONTACTED
+  NEGOTIATING
+  ACTIVE
+  INACTIVE
+}
+
+enum SponsorType {
+  MONETARY
+  IN_KIND
+  VENUE
+  EQUIPMENT
+  OTHER
+}
+
+model EventSponsor {
+  id                      String   @id @default(uuid())
+  eventId                 String
+  sponsorId               String
+  contributionAmount      Float?
+  contributionDescription String?
+  createdAt               DateTime @default(now())
+
+  event   Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  sponsor Sponsor @relation(fields: [sponsorId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, sponsorId])
+  @@map("event_sponsors")
+}
+
+model Contact {
+  id           String          @id @default(uuid())
+  firstName    String
+  lastName     String
+  email        String?
+  phone        String?
+  organization String?
+  role         String?
+  category     ContactCategory @default(OTHER)
+  notes        String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@map("contacts")
+}
+
+enum ContactCategory {
+  PLAYER
+  SPONSOR
+  VENUE
+  MEDIA
+  VOLUNTEER
+  OTHER
+}
+
+model Form {
+  id          String     @id @default(uuid())
+  title       String
+  description String?
+  type        FormType
+  status      FormStatus @default(DRAFT)
+  fields      Json
+  createdBy   String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  creator   User           @relation(fields: [createdBy], references: [id])
+  responses FormResponse[]
+
+  @@map("forms")
+}
+
+enum FormType {
+  QUESTIONNAIRE
+  REGISTRATION
+  SURVEY
+  FEEDBACK
+  COMMENTARY
+}
+
+enum FormStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model FormResponse {
+  id              String   @id @default(uuid())
+  formId          String
+  respondentId    String?
+  respondentEmail String?
+  responses       Json
+  submittedAt     DateTime @default(now())
+
+  form       Form  @relation(fields: [formId], references: [id], onDelete: Cascade)
+  respondent User? @relation(fields: [respondentId], references: [id])
+
+  @@map("form_responses")
+}
