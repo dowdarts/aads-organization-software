@@ -118,4 +118,4 @@ If you need to go back to local PostgreSQL:
 
 ---
 
-Your current Supabase project: https://kswwbqumgsdissnwuiab.supabase.co
+Your current Supabase project: https://cyqpwtygtxpabyldwkrn.supabase.co
